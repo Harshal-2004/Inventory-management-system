@@ -1,0 +1,76 @@
+<?php
+include('../config.php');
+session_start();
+
+use PHPMailer\PHPMailer\PHPMailer;
+use PHPMailer\PHPMailer\SMTP;
+use PHPMailer\PHPMailer\Exception;
+
+// Load Composer's autoloader
+require '../vendor/autoload.php';
+
+function send_password_reset($get_username, $get_email, $token)
+{
+    $mail = new PHPMailer(true);
+    $mail->isSMTP();                                            // Send using SMTP
+    $mail->SMTPAuth = true;                                     // Enable SMTP authentication
+    $mail->Host = 'smtp.gmail.com';                             // Set the SMTP server to send through
+    $mail->Username = 'imsfcrit@gmail.com';                   // SMTP username
+    $mail->Password = 'your_password';                          // SMTP password
+    $mail->SMTPSecure = 'tls';                                  // Enable TLS encryption
+    $mail->Port = 587;                                          // TCP port to connect to (587 for TLS)
+    $mail->setFrom('imsfcrit@gmail.com', 'Your Name');
+    $mail->addAddress($get_email);                              // Add a recipient
+    $mail->isHTML(true);
+    $mail->Subject = "Reset password";
+
+    $email_template = "
+    <h2>Hello</h2>
+    <h3>To change password</h3>
+    <br/>
+    <a href='https://ims.fcrit.ac.in/student/password-change.php?token=$token&email=$get_email'>Click me</a>
+    ";
+
+    $mail->Body = $email_template;
+
+    try {
+        $mail->send();
+        echo 'Email has been sent';
+    } catch (Exception $e) {
+        echo "Message could not be sent. Mailer Error: {$mail->ErrorInfo}";
+    }
+}
+
+if (isset($_POST['password_reset_link'])) {
+    $email = mysqli_real_escape_string($connection, $_POST['email']);
+    $token = md5(rand());
+
+    $check_email = "SELECT username, email FROM student WHERE email='$email' LIMIT 1";
+    $check_email_run = mysqli_query($connection, $check_email);
+
+    if (mysqli_num_rows($check_email_run) > 0) {
+        $row = mysqli_fetch_array($check_email_run);
+        $get_username = $row['username'];
+        $get_email = $row['email'];
+
+        $update_token = "UPDATE student SET verify_token='$token' WHERE email='$get_email' LIMIT 1";
+        $update_token_run = mysqli_query($connection, $update_token);
+
+        if ($update_token_run) {
+            send_password_reset($get_username, $get_email, $token);
+            $_SESSION['status'] = "We emailed the link";
+            header("Location: password-reset.php");
+            exit(0);
+        } else {
+            $_SESSION['status'] = "Something went wrong. #1";
+            header("Location: password-reset.php");
+            exit(0);
+        }
+    } else {
+        $_SESSION['status'] = "No email found";
+        header("Location: password-reset.php");
+        exit(0);
+    }
+}
+
+?>

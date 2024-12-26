@@ -1,0 +1,6 @@
+
+
+
+### for taking to input with one line  ###
+
+a,b = map(int,input().split())

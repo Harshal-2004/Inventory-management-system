@@ -1,0 +1,87 @@
+<?php
+// Determine the directory name from the URL
+$current_url = $_SERVER['HTTP_HOST'] . $_SERVER['REQUEST_URI'];
+$url_parts = parse_url($current_url);
+$path_parts = explode('/', trim($url_parts['path'], '/'));
+
+// Find the directory name (parent directory)
+$directory_name = $path_parts[1]; // Assumes that the first path segment after the domain is the desired directory name
+
+// Set $_cred and $_source based on the directory name
+$_cred = $directory_name;
+$_source = $directory_name;
+
+// Database configuration
+$_database = 'tech_nontech';
+?>
+<?php
+include('../../config.php');
+session_start();
+$user = $_SESSION["role"];
+$result = "SELECT * FROM $_cred WHERE username = '$user'";
+$query = mysqli_query($connection, $result);
+$queryresult = mysqli_num_rows($query); 
+if ($queryresult > 0) {
+    while ($row = mysqli_fetch_assoc($query)) {
+        $id = $row['id'];
+    }
+}
+
+
+if (isset($_POST['insertdata'])) {
+    $year = $_POST['year'];
+    $branch= $_POST['branch'];
+    $type_activity = $_POST['type_activity'];
+    // $coordinator = $_POST['coordinator'];
+    $title = $_POST['title'];
+    // $category = $_POST['category'];
+    $others = $_POST['others'];
+    $no_of_participants = $_POST['no_of_participants'];
+    $names_of_participants = $_POST['names_of_participants'];
+    $start_date = $_POST['start_date'];
+    $end_date = $_POST['end_date'];
+    $pdffile1 = $_FILES['pdffile1']['name'];
+    $file_tmp1 = $_FILES['pdffile1']['tmp_name'];
+    
+    $id = $_POST['user_id'];
+
+// File upload logic
+$pdffile1 = $_FILES['pdffile1']['name'];
+$file_tmp1 = $_FILES['pdffile1']['tmp_name'];
+$upload_dir = "../../clubadmin/tech-nontech/uploads/";
+
+
+if (!empty($pdffile1)) {
+// Generate new filename based on your naming convention
+$file_extension = pathinfo($pdffile1, PATHINFO_EXTENSION);
+
+    // Replace problematic characters in title and type_activity
+    $sanitized_title = str_replace(array('/', '\\', ':', '*', '?', '"', '<', '>', '|',' '), '', $title);
+    $sanitized_type_activity = str_replace(array('/', '\\', ':', '*', '?', '"', '<', '>', '|',' '), '', $type_activity);
+
+    // Construct new file name
+    $new_filename = "{$_cred}_{$year}_{$sanitized_type_activity}_{$sanitized_title}.{$file_extension}";
+
+    // Move uploaded file to the upload directory with the new file name
+    move_uploaded_file($file_tmp1, $upload_dir . $new_filename);
+}
+
+
+// if (!empty($pdffile1)) {
+//     move_uploaded_file($file_tmp1, $upload_dir . $pdffile1);
+// }
+
+$query = "INSERT INTO $_database (`year`, `branch`, `type_activity`, `title`, `others`, `no_of_participants`, `names_of_participants`, `start_date`, `end_date`, `pdffile1`, `user_id`, `STATUS`, `Source`) 
+VALUES ('$year', '$branch', '$type_activity', '$title', '$others', '$no_of_participants', '$names_of_participants', '$start_date', '$end_date', '$new_filename', '$id', 'PENDING', '$_source');";
+
+
+$query_run = mysqli_query($connection, $query);
+
+if ($query_run) {
+    echo '<script> alert("Data Saved"); </script>';
+    header('Location: index.php');
+} else {
+    echo '<script> alert("Data Not Saved"); </script>';
+}
+}
+?>
